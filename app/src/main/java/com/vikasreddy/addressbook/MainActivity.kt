@@ -1,6 +1,7 @@
 package com.vikasreddy.addressbook
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Geocoder
@@ -28,7 +29,8 @@ class MainActivity : AppCompatActivity()
         , GoogleApiClient.ConnectionCallbacks
         , GoogleApiClient.OnConnectionFailedListener {
 
-    private var addressBook: MutableList<Address> = mutableListOf()
+//    private var addressBook: MutableList<Address> = mutableListOf()
+    private var addressBook: ArrayList<Address> = ArrayList(2)
     private var lastLocation: Location? = null
     private var isPermissionGranted = false
     private lateinit var resultReceiver: AddressResultReceiver
@@ -50,9 +52,20 @@ class MainActivity : AppCompatActivity()
             else
                 fetchAddressButtonHandler(view)
         }
+        loadAppData()
 
         address_recycler_view.layoutManager = LinearLayoutManager(this)
         address_recycler_view.adapter = AddressRecyclerAdapter(addressBook, this)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        FileIO.writeAddressBook(this, addressBook)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        loadAppData()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -87,6 +100,16 @@ class MainActivity : AppCompatActivity()
         startService(intent)
     }
 
+    private fun startIntentService(id: Int, location: Location, addressResultReceiver: AddressResultReceiver) {
+        val intent = Intent(this, FetchAddressIntentService::class.java).apply {
+            putExtra(Constants.ADDRESS_ID_EXTRA, id)
+            putExtra(Constants.RECEIVER, addressResultReceiver)
+            putExtra(Constants.LOCATION_DATA_EXTRA, location)
+        }
+        startService(intent)
+    }
+
+    @SuppressLint("MissingPermission")
     private fun fetchAddressButtonHandler(view: View) {
         fusedLocationClient.lastLocation?.addOnSuccessListener { location: Location? ->
             if (location == null) return@addOnSuccessListener
@@ -107,24 +130,37 @@ class MainActivity : AppCompatActivity()
 
     internal inner class AddressResultReceiver(handler: Handler) : ResultReceiver(handler) {
         override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
-            val addressOutput = resultData?.getParcelable(Constants.RESULT_ADDRESS_DATA_KEY) as android.location.Address
-            val locationOutput = resultData.getParcelable(Constants.RESULT_LOCATION_DATA_KEY) as Location
+            val id = resultData?.getInt(Constants.ADDRESS_ID_EXTRA) as Int
+            val addressOutput = resultData.getParcelable(Constants.RESULT_ADDRESS_DATA_KEY)
+                    as android.location.Address
+            val locationOutput = resultData.getParcelable(Constants.RESULT_LOCATION_DATA_KEY)
+                    as Location
 
-            // Show a toast message if an address was found.
             if (resultCode == Constants.SUCCESS_RESULT) {
-                Snackbar.make(app_content as View, getString(R.string.address_found), Snackbar.LENGTH_LONG).show()
-                addressBook.add(
-                        Address(
-                                addressBook.size,
-                                "Address " + addressBook.size + 1,
-                                locationOutput,
-                                addressOutput
-                        )
-                )
-                address_recycler_view.adapter?.notifyItemInserted(addressBook.size)
+                var address = addressBook.find { it.Id == id }
+                if(address == null) {
+                    address =  Address(
+                        addressBook.size,
+                        "Address ${addressBook.size + 1}",
+                        locationOutput,
+                        addressOutput
+                    )
+                    addressBook.add(address)
+                    Log.i(TAG, "Displaying ${address.label}")
+                    if(addressBook.size == 1)
+                        address_recycler_view.adapter = AddressRecyclerAdapter(addressBook, applicationContext)
+                    else{
+                        address_recycler_view.adapter?.notifyItemInserted(addressBook.indexOf(address))
+                        address_recycler_view.adapter?.notifyDataSetChanged()
+                    }
+                }
+                else {
+                    address.address = addressOutput
+                    address_recycler_view.adapter?.notifyItemChanged(addressBook.indexOf(address))
+                    address_recycler_view.adapter?.notifyDataSetChanged()
+                }
                 Log.i(TAG, "Address Book Size:" + addressBook.size)
             }
-
         }
     }
 
@@ -135,7 +171,6 @@ class MainActivity : AppCompatActivity()
                 )
                 != PackageManager.PERMISSION_GRANTED
         ) {
-
             if (ActivityCompat.shouldShowRequestPermissionRationale(
                             this,
                             Manifest.permission.ACCESS_FINE_LOCATION
@@ -150,6 +185,16 @@ class MainActivity : AppCompatActivity()
             }
         } else {
             isPermissionGranted = true
+        }
+    }
+
+    private fun loadAppData() {
+        if(addressBook.isEmpty()) {
+            addressBook = FileIO.readAddressBook(this)
+            addressBook.forEach {
+                if(it.location != null)
+                    startIntentService(it.Id, it.location, AddressResultReceiver(Handler()))
+            }
         }
     }
 

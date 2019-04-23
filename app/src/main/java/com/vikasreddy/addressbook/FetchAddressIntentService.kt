@@ -21,17 +21,18 @@ class FetchAddressIntentService(name: String? = null) : IntentService(name) {
         var errorMessage = ""
         var addresses: List<Address> = emptyList()
 
+        val id = intent.getIntExtra(Constants.ADDRESS_ID_EXTRA, -1)
         // Get the data passed to this service through an extra.
         val location = intent.getParcelableExtra(
-                Constants.LOCATION_DATA_EXTRA
+            Constants.LOCATION_DATA_EXTRA
         ) as Location
         receiver = intent.getParcelableExtra(Constants.RECEIVER)
 
         try {
             addresses = geocoder.getFromLocation(
-                    location.latitude,
-                    location.longitude,
-                    1
+                location.latitude,
+                location.longitude,
+                1
             )
         } catch (ioException: IOException) {
             // Catch network or other I/O problems.
@@ -41,14 +42,14 @@ class FetchAddressIntentService(name: String? = null) : IntentService(name) {
             // Catch invalid latitude or longitude values.
             errorMessage = getString(R.string.invalid_lat_long_used)
             Log.e(
-                    TAG, "$errorMessage. Latitude = $location.latitude , " +
-                    "Longitude =  $location.longitude", illegalArgumentException
+                TAG, "$errorMessage. Latitude = $location.latitude , " +
+                        "Longitude =  $location.longitude", illegalArgumentException
             )
         } catch (exception: Throwable) {
             errorMessage = getString(R.string.invalid_lat_long_used)
             Log.e(
-                    TAG, "$errorMessage. Latitude = $location.latitude , " +
-                    "Longitude =  $location.longitude", exception
+                TAG, "$errorMessage. Latitude = $location.latitude , " +
+                        "Longitude =  $location.longitude", exception
             )
         }
 
@@ -63,9 +64,10 @@ class FetchAddressIntentService(name: String? = null) : IntentService(name) {
             val address = addresses[0]
             Log.i(TAG, getString(R.string.address_found))
             deliverResultToReceiver(
-                    Constants.SUCCESS_RESULT,
-                    address,
-                    location
+                Constants.SUCCESS_RESULT,
+                id,
+                address,
+                location
             )
         }
     }
@@ -77,8 +79,9 @@ class FetchAddressIntentService(name: String? = null) : IntentService(name) {
         receiver?.send(resultCode, bundle)
     }
 
-    private fun deliverResultToReceiver(resultCode: Int, address: Address, location: Location) {
+    private fun deliverResultToReceiver(resultCode: Int, id: Int, address: Address, location: Location) {
         val bundle = Bundle().apply {
+            putInt(Constants.ADDRESS_ID_EXTRA, id)
             putParcelable(Constants.RESULT_ADDRESS_DATA_KEY, address)
             putParcelable(Constants.RESULT_LOCATION_DATA_KEY, location)
         }
