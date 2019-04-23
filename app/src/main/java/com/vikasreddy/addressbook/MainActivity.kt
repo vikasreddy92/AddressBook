@@ -26,10 +26,10 @@ import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.content_main.*
 
 class MainActivity : AppCompatActivity()
-        , GoogleApiClient.ConnectionCallbacks
-        , GoogleApiClient.OnConnectionFailedListener {
+    , GoogleApiClient.ConnectionCallbacks
+    , GoogleApiClient.OnConnectionFailedListener {
 
-//    private var addressBook: MutableList<Address> = mutableListOf()
+    //    private var addressBook: MutableList<Address> = mutableListOf()
     private var addressBook: ArrayList<Address> = ArrayList(2)
     private var lastLocation: Location? = null
     private var isPermissionGranted = false
@@ -46,7 +46,7 @@ class MainActivity : AppCompatActivity()
 
         addFab.setOnClickListener { view ->
             Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                    .setAction("Action", null).show()
+                .setAction("Action", null).show()
             if (!isPermissionGranted)
                 requestLocationPermission()
             else
@@ -116,9 +116,9 @@ class MainActivity : AppCompatActivity()
 
             if (!Geocoder.isPresent()) {
                 Snackbar.make(
-                        view,
-                        R.string.no_geocoder_available,
-                        Snackbar.LENGTH_LONG
+                    view,
+                    R.string.no_geocoder_available,
+                    Snackbar.LENGTH_LONG
                 ).show()
                 return@addOnSuccessListener
             }
@@ -138,8 +138,8 @@ class MainActivity : AppCompatActivity()
 
             if (resultCode == Constants.SUCCESS_RESULT) {
                 var address = addressBook.find { it.Id == id }
-                if(address == null) {
-                    address =  Address(
+                if (address == null) {
+                    address = Address(
                         addressBook.size,
                         "Address ${addressBook.size + 1}",
                         locationOutput,
@@ -147,14 +147,13 @@ class MainActivity : AppCompatActivity()
                     )
                     addressBook.add(address)
                     Log.i(TAG, "Displaying ${address.label}")
-                    if(addressBook.size == 1)
+                    if (addressBook.size == 1)
                         address_recycler_view.adapter = AddressRecyclerAdapter(addressBook, applicationContext)
-                    else{
+                    else {
                         address_recycler_view.adapter?.notifyItemInserted(addressBook.indexOf(address))
                         address_recycler_view.adapter?.notifyDataSetChanged()
                     }
-                }
-                else {
+                } else {
                     address.address = addressOutput
                     address_recycler_view.adapter?.notifyItemChanged(addressBook.indexOf(address))
                     address_recycler_view.adapter?.notifyDataSetChanged()
@@ -166,20 +165,20 @@ class MainActivity : AppCompatActivity()
 
     private fun requestLocationPermission() {
         if (ContextCompat.checkSelfPermission(
-                        this,
-                        Manifest.permission.ACCESS_FINE_LOCATION
-                )
-                != PackageManager.PERMISSION_GRANTED
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            )
+            != PackageManager.PERMISSION_GRANTED
         ) {
             if (ActivityCompat.shouldShowRequestPermissionRationale(
-                            this,
-                            Manifest.permission.ACCESS_FINE_LOCATION
-                    )
+                    this,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                )
             ) {
             } else {
                 ActivityCompat.requestPermissions(
-                        this,
-                        arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                    this,
+                    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
                     PERMISSIONS_REQUEST_LOCATION
                 )
             }
@@ -189,18 +188,18 @@ class MainActivity : AppCompatActivity()
     }
 
     private fun loadAppData() {
-        if(addressBook.isEmpty()) {
+        if (addressBook.isEmpty()) {
             addressBook = FileIO.readAddressBook(this)
             addressBook.forEach {
-                if(it.location != null)
+                if (it.location != null)
                     startIntentService(it.Id, it.location, AddressResultReceiver(Handler()))
             }
         }
     }
 
     override fun onRequestPermissionsResult(
-            requestCode: Int,
-            permissions: Array<String>, grantResults: IntArray
+        requestCode: Int,
+        permissions: Array<String>, grantResults: IntArray
     ) {
         when (requestCode) {
             PERMISSIONS_REQUEST_LOCATION -> {
